@@ -4,23 +4,30 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.nfc.NfcAdapter
 import android.nfc.Tag
+import android.nfc.tech.IsoDep
 import android.nfc.tech.NfcA
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import com.blankj.utilcode.util.ToastUtils
+import com.example.nfc.ByteUtils.hexToBytes
+import com.example.nfc.ByteUtils.toHexString
 import com.example.nfc.databinding.ActivityMainBinding
 import me.hgj.jetpackmvvm.base.activity.BaseVmDbActivity
 
 class MainActivity : BaseVmDbActivity<MainViewModel, ActivityMainBinding>() {
 
-    private val TAG = "MainActivity"
+    companion object {
+        const val ISO_DEP: String = "android.nfc.tech.IsoDep"
+        const val TAG = "MainActivity"
+
+    }
 
     private val mNfcAdapter: NfcAdapter by lazy {
         NfcAdapter.getDefaultAdapter(this)
     }
 
-    private var nfcA: NfcA? = null
+    private var isoDep: IsoDep? = null
 
     override fun createObserver() {
     }
@@ -32,7 +39,8 @@ class MainActivity : BaseVmDbActivity<MainViewModel, ActivityMainBinding>() {
         super.onResume()
         Log.d(TAG, "onResume: ")
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0
+            this, 0, Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_MUTABLE
         )
         mNfcAdapter.enableForegroundDispatch(this, pendingIntent, null, null)
 
@@ -53,115 +61,6 @@ class MainActivity : BaseVmDbActivity<MainViewModel, ActivityMainBinding>() {
 
         }
 
-        //写
-        mDatabind.btWhite.setOnClickListener {
-            val byteValues = mDatabind.inputText.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            Log.d(TAG, "initView: ${byteValues.contentToString()}")
-            nfcA?.let {
-                //DC-DC enable
-                setStatusBody("dcdc enable")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-
-            }
-        }
-
-        mDatabind.btWhite1.setOnClickListener {
-            val byteValues = mDatabind.inputText1.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            nfcA?.let {
-                setStatusBody("Screen reset")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-
-
-            }
-
-        }
-
-        mDatabind.btWhite2.setOnClickListener {
-            val byteValues = mDatabind.inputText2.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            nfcA?.let {
-                setStatusBody("Screen working")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-            }
-
-        }
-
-
-
-        mDatabind.btWhite3.setOnClickListener {
-            val byteValues = mDatabind.inputText3.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            nfcA?.let {
-                setStatusBody("power init")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-//for Voltage stability
-
-            }
-
-        }
-        mDatabind.btWhite4.setOnClickListener {
-            val byteValues = mDatabind.inputText4.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            nfcA?.let {
-                setStatusBody("power init")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-
-            }
-
-        }
-        mDatabind.btWhite5.setOnClickListener {
-            val byteValues = mDatabind.inputText5.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            nfcA?.let {
-                setStatusBody("power init")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-
-            }
-
-        }
-        mDatabind.btWhite6.setOnClickListener {
-            val byteValues = mDatabind.inputText6.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            nfcA?.let {
-                setStatusBody("power init")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-
-            }
-
-        }
-        mDatabind.btWhite7.setOnClickListener {
-            val byteValues = mDatabind.inputText7.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            nfcA?.let {
-                setStatusBody("power init")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-
-            }
-
-        }
-
-
-        mDatabind.btWhite8.setOnClickListener {
-            val byteValues = mDatabind.inputText8.text.toString().split(" ").map { hexString ->
-                hexString.substring(2).toInt(16).toByte()
-            }.toByteArray()
-            nfcA?.let {
-                setStatusBody("picture datas transfer command")
-                if (sendAndRes(it, byteValues)) return@setOnClickListener //for Voltage stability
-
-            }
-
-        }
     }
 
     private fun sendAndRes(it: NfcA, byteValues: ByteArray): Boolean {
@@ -169,17 +68,12 @@ class MainActivity : BaseVmDbActivity<MainViewModel, ActivityMainBinding>() {
         Log.d(TAG, "writeTag: ${response.contentToString()}")
 
         if (response[0] != 0x00.toByte() || response[1] != 0x00.toByte()) {
-            setStatusBody("Updating failed!")
             return true
         }
-        setResponseBody(response)
         SystemClock.sleep(10)
         return false
     }
 
-    private fun setResponseBody(response: ByteArray?) {
-        mDatabind.tvResponse.text = "response:  ${response.contentToString()}"
-    }
 
     override fun showLoading(message: String) {
     }
@@ -202,24 +96,30 @@ class MainActivity : BaseVmDbActivity<MainViewModel, ActivityMainBinding>() {
 
     private fun writeTag(tag: Tag?) {
         val tech: Array<out String>? = tag?.techList
-
-        if (tech != null) {
-            if (tech[1] == "android.nfc.tech.NfcA") {
-                nfcA = NfcA.get(tag)
-                nfcA?.let {
-                    it.connect()
-                    it.timeout = 50
+        try {
+            if (tech != null) {
+                Log.d(TAG, "writeTag: ${tech[1]}")
+                if (tech[0] == ISO_DEP) {
+                    isoDep = IsoDep.get(tag)
+                    isoDep?.let {
+                        it.connect()
+                        Log.d(TAG, "writeTag: connect")
+                        val transceive = it.transceive("0084000004".hexToBytes())
+                        Log.d(TAG, "writeTag: ${transceive.toHexString()}")
+                        val transceive1 = it.transceive("00a4000002DF04".hexToBytes())
+                        Log.d(TAG, "writeTag: ${transceive1.toHexString()}")
+                        val transceive2 = it.transceive("00a4000002ef01".hexToBytes())
+                        Log.d(TAG, "writeTag: ${transceive2.toHexString()}")
+                        val transceive3 = it.transceive("00b00000f0".hexToBytes())
+                        Log.d(TAG, "writeTag: ${transceive3.toHexString()}")
+                    }
+                    SystemClock.sleep(10)
                 }
-                SystemClock.sleep(10)
             }
-        }
-        Log.d(TAG, "writeTag: $nfcA")
-
-    }
-
-    private fun setStatusBody(s: String) {
-        runOnUiThread {
-            mDatabind.tvState.text = "状态:   $s"
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            isoDep?.close()
         }
     }
 }
